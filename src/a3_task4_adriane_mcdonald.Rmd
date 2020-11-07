@@ -1,0 +1,109 @@
+---
+title: "a3_task4_adriane_mcdonald"
+author: "Adriane McDonald"
+date: "11/6/2020"
+output: html_document
+---
+# TASK 4: Naples Reef (January 2010) purple urchins 
+
+**Data:** Reed, D. 2020. SBC LTER: Reef: Long-term experiment: Kelp removal: Urchin size frequency distribution ver 20. Environmental Data Initiative. [DOI](https://portal.edirepository.org/nis/mapbrowse?packageid=knb-lter-sbc.26.20)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(kableExtra)
+library(lubridate)
+```
+
+## Read in the Urchins data 
+
+Use janitor package to clean variable names
+
+```{r, warning = FALSE, message = FALSE}
+urchins_data_task4 <- read_csv(here("data", "urchins.csv")) %>% 
+  clean_names()
+```
+
+## Compare the mean size of purple urchins in CONTROL or ANNUAL sections of Naples Reef in January 2010
+
+### Wrangle urchins data
+
+Include only Naples Reef observations for purple urchins observed in January 2010
+
+After each line, make sure to look at dataset to ensure you remain on the right path. 
+
+```{r, warning = FALSE, message = FALSE}
+naples_urchins <- urchins_data_task4 %>% 
+  filter(common_name == "Purple Urchin", site == "NAPL") %>%
+  mutate(date_new = mdy(date)) %>% 
+  mutate(year_new = year(date_new)) %>%
+  mutate(month_new = month(date_new)) %>% 
+  mutate(full_site_name = case_when(
+    site == "NAPL" ~ "Naples Reef")) %>% 
+  filter(year_new == "2010", month_new == "1")
+```
+
+
+### Data Visualization 
+
+#### Use exploratory graphs to look at the size distribution for each treatment (control and annual) to assess normality
+
+Here, I will be using a histogram to assess size distribution and normality for the two treatments. This is not a final graph. 
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data = naples_urchins, aes(x = size, fill = treatment))+
+  geom_histogram(bins = 8)+
+  facet_wrap(~treatment)+
+  theme_bw()
+```
+
+This exploratory graph does not show much about the size distribution for each treatment, but it does appear that the distribution of urchin sizes for both treatments are very similar and are fairly normal.  
+
+### Descriptive Statistics
+
+#### Creation of a table containing the mean, std, and sample size (at least)
+
+```{r, warning = FALSE, message = FALSE}
+naples_urchin_stats <- naples_urchins %>% 
+  group_by(treatment) %>% 
+  summarize(mean = mean(size),
+            sd = sd(size),
+            sample_size = n(),
+            median = median(size)) %>% 
+  kbl() %>% 
+  kable_classic_2(full_width = F)
+
+naples_urchin_stats
+```
+
+### Two Sample T-Test
+
+Two Sample T-test to compare means between the two treatment groups 
+
+```{r, warning = FALSE, message = FALSE}
+annual_sample <- naples_urchins %>% 
+  filter(treatment == "ANNUAL") %>% 
+  pull(size)
+
+control_sample <- naples_urchins %>% 
+  filter(treatment == "CONTROL") %>% 
+  pull(size)
+
+t.test(x = annual_sample, y = control_sample)
+
+sd(annual_sample)
+sd(control_sample)
+
+```
+
+#### E. What does this mean?
+##### More specifically, how different are the sample means for the ANNUAL group and CONTROL group? Are the sample means different enough that we can assume they are drawn from populations with different means? 
+
+###### What is the probability that I would have found samples with means that are *at least as different as the ones I've found* by random chance, if they are drawns from populations with the same mean? 
+
+The Two-Sample t-test provides us information on the difference of means of two populations, annual and control treatments. The mean of the annual group was determined to be 3.917 $\pm$ 0.966 cm (n=60), slightly larger than the control group at 3.726 $\pm$ 0.866 cm (n=62). Values are mean $\pm$ 1 standard deviation; t(117.66) = 1.1472, p = 0.2536). The critical value of t is 1.1472 which means that if the standardized difference between the two sample means is larger than 1.1472 then it can be concluded that there is a significant difference between the population means. The actual difference is about 0.192 cm. Additionally, the p-value is 0.2536, which means that it is likely to randomly find sample means at least as different as these are by random chance if they are drawn from populations with the same mean. Essentially, the sample means are not different enough that we can assume they are drawn from populations with different means. 
+
+
+
